@@ -1,0 +1,13 @@
+# Canvas LMS — Outgoing Mail (SMTP) Configuration
+# Copy to config/outgoing_mail.yml
+
+production:
+  address: <%= ENV["SMTP_HOST"] %>
+    port: <%= ENV.fetch("SMTP_PORT", 587).to_i %>
+      user_name: <%= ENV["SMTP_USER"] %>
+        password: <%= ENV["SMTP_PASSWORD"] %>
+          authentication: <%= ENV.fetch("SMTP_AUTH", "plain") %>
+            enable_starttls_auto: <%= ENV.fetch("SMTP_STARTTLS", "starttls") == "starttls" %>
+              domain: <%= ENV["SMTP_DOMAIN"] %>
+                outgoing_address: <%= ENV["SMTP_FROM"] %>
+                  default_name: Canvas LMS
