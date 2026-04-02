@@ -1,0 +1,19 @@
+# Canvas LMS — Dynamic Settings
+# Copy to config/dynamic_settings.yml
+# Used to configure feature flags and service endpoints without restarting.
+
+production:
+  config:
+      canvas:
+            # Enable the new Horizon UI
+                  canvas-horizon-ui: "<%= ENV.fetch('CANVAS_HORIZON_UI', 'true') %>"
+                        # Use the new gradebook
+                              new_gradebook: "<%= ENV.fetch('CANVAS_NEW_GRADEBOOK', 'true') %>"
+                                    # Quizzes.Next (New Quizzes)
+                                          quizzes-next: "<%= ENV.fetch('CANVAS_QUIZZES_NEXT', 'false') %>"
+                                                # Disable anonymous analytics reporting to Instructure
+                                                      canvas_statsd.enabled: "false"
+                                                          # Uncomment to configure an external Vault for secrets
+                                                              # vault:
+                                                                  #   addr: https://vault.yourdomain.com
+                                                                      #   token: your_vault_token
