@@ -1,0 +1,13 @@
+# Canvas LMS — Security Configuration
+# Copy to config/security.yml
+#
+# IMPORTANT: Generate unique values with:
+#   openssl rand -hex 32
+#
+# NEVER commit the real security.yml to version control.
+
+production:
+  # Secret key base — used to sign and verify cookies/sessions
+    encryption_key: <%= ENV["CANVAS_ENCRYPTION_KEY"] %>
+      # Pseudonymous login cookie salt
+        # lti_secret: change_me_generate_with_openssl_rand_hex_32
