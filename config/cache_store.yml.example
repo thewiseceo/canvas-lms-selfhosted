@@ -1,0 +1,10 @@
+# Canvas LMS — Cache Store Configuration
+# Copy to config/cache_store.yml
+
+production:
+  cache_store: redis_cache_store
+    redis_url: <%= ENV.fetch("REDIS_URL", "redis://redis:6379") %>
+      # Number of connections in the Redis connection pool
+        pool_size: <%= ENV.fetch("REDIS_POOL_SIZE", 5).to_i %>
+          # Namespace keeps Canvas keys separate from other apps on the same Redis
+            namespace: canvas_cache
