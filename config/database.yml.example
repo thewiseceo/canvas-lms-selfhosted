@@ -1,0 +1,22 @@
+# Canvas LMS — Database Configuration
+# Copy to config/database.yml and update with your credentials from .env
+
+default: &default
+    adapter: postgresql
+    encoding: utf8
+    pool: <%= ENV.fetch("DB_POOL", 5).to_i %>
+    timeout: 5000
+    username: <%= ENV["POSTGRES_USER"] %>
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
+    host: <%= ENV.fetch("POSTGRES_HOST", "postgres") %>
+    port: <%= ENV.fetch("POSTGRES_PORT", 5432).to_i %>
+
+  production:
+  <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB", "canvas_production") %>
+
+  # Uncomment and configure if you need separate read replicas
+  # production_slave:
+  #   <<: *default
+  #   database: canvas_production
+  #   host: postgres-replica
