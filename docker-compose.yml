@@ -1,141 +1,101 @@
-# =============================================================================
-  # Canvas LMS Self-Hosted — Docker Compose
-  # Requires: Docker >= 24.x, Docker Compose >= 2.x
-    # Usage: copy .env.example to .env, fill values, then run ./scripts/setup.sh
-      # =============================================================================
-
-      version: "3.9"
-
-      x-canvas-env: &canvas-env
-          env_file: .env
-              environment:
-    - RAILS_ENV=production
-          - CANVAS_LMS_ADMIN_EMAIL=${CANVAS_ADMIN_EMAIL}
-    - CANVAS_LMS_ADMIN_PASSWORD=${CANVAS_ADMIN_PASSWORD}
-    - CANVAS_LMS_ACCOUNT_NAME=${CANVAS_ADMIN_NAME}
-    - CANVAS_LMS_STATS_COLLECTION=opt_out
-          - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    - REDIS_URL=${REDIS_URL}
-    - SECRET_KEY_BASE=${CANVAS_SECRET_KEY_BASE}
+version: "3.9"
 
 services:
 
-  # ---------------------------------------------------------------------------
-      # PostgreSQL database
-      # ---------------------------------------------------------------------------
-      postgres:
+  postgres:
     image: postgres:15-alpine
-          restart: unless-stopped
-                environment:
+    restart: unless-stopped
+    environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-            healthcheck:
+    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
-              timeout: 5s
-                      retries: 5
-                            deploy:
-      resources:
-        limits:
-          cpus: "${POSTGRES_CPU_LIMIT:-1}"
-                      memory: "${POSTGRES_MEM_LIMIT:-2g}"
+      timeout: 5s
+      retries: 5
 
-                          # ---------------------------------------------------------------------------
-                          # Redis — cache + job queue
-                          # ---------------------------------------------------------------------------
-                          redis:
+  redis:
     image: redis:7-alpine
-          restart: unless-stopped
-                command: redis-server --save 60 1 --loglevel warning
-                      volumes:
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
       - redis_data:/data
-            healthcheck:
+    healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
-              timeout: 5s
-                      retries: 5
-                            deploy:
-      resources:
-        limits:
-          memory: "${REDIS_MEM_LIMIT:-512m}"
+      timeout: 5s
+      retries: 5
 
-              # ---------------------------------------------------------------------------
-              # Canvas LMS web application
-              # ---------------------------------------------------------------------------
-              canvas:
+  canvas:
     image: instructure/canvas-lms:${CANVAS_LMS_VERSION:-stable}
     restart: unless-stopped
-          <<: *canvas-env
-                ports:
+    env_file: .env
+    environment:
+      RAILS_ENV: production
+      CANVAS_LMS_ADMIN_EMAIL: ${CANVAS_ADMIN_EMAIL}
+      CANVAS_LMS_ADMIN_PASSWORD: ${CANVAS_ADMIN_PASSWORD}
+      CANVAS_LMS_ACCOUNT_NAME: ${CANVAS_ADMIN_NAME}
+      CANVAS_LMS_STATS_COLLECTION: opt_out
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: ${REDIS_URL}
+      SECRET_KEY_BASE: ${CANVAS_SECRET_KEY_BASE}
+    ports:
       - "3000:3000"
-            volumes:
+    volumes:
       - canvas_uploads:/usr/src/app/public/assets/uploads
-              - ./config/database.yml:/usr/src/app/config/database.yml:ro
-                      - ./config/cache_store.yml:/usr/src/app/config/cache_store.yml:ro
-                              - ./config/outgoing_mail.yml:/usr/src/app/config/outgoing_mail.yml:ro
-                                      - ./config/security.yml:/usr/src/app/config/security.yml:ro
-                                              - ./config/dynamic_settings.yml:/usr/src/app/config/dynamic_settings.yml:ro
-                                                    depends_on:
+      - ./config/database.yml:/usr/src/app/config/database.yml:ro
+      - ./config/cache_store.yml:/usr/src/app/config/cache_store.yml:ro
+      - ./config/outgoing_mail.yml:/usr/src/app/config/outgoing_mail.yml:ro
+      - ./config/security.yml:/usr/src/app/config/security.yml:ro
+      - ./config/dynamic_settings.yml:/usr/src/app/config/dynamic_settings.yml:ro
+    depends_on:
       postgres:
         condition: service_healthy
-                redis:
+      redis:
         condition: service_healthy
-              healthcheck:
+    healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health_check"]
       interval: 30s
-              timeout: 10s
-                      retries: 3
-                              start_period: 60s
-                                    deploy:
-      resources:
-        limits:
-          cpus: "${CANVAS_CPU_LIMIT:-2}"
-                      memory: "${CANVAS_MEM_LIMIT:-4g}"
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-                          # ---------------------------------------------------------------------------
-                          # Canvas background job workers
-                          # ---------------------------------------------------------------------------
-                          canvas-jobs:
+  canvas-jobs:
     image: instructure/canvas-lms:${CANVAS_LMS_VERSION:-stable}
     restart: unless-stopped
-          <<: *canvas-env
-                command: bundle exec script/delayed_job run
-                      volumes:
+    env_file: .env
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: ${REDIS_URL}
+      SECRET_KEY_BASE: ${CANVAS_SECRET_KEY_BASE}
+    command: bundle exec script/delayed_job run
+    volumes:
       - canvas_uploads:/usr/src/app/public/assets/uploads
-              - ./config/database.yml:/usr/src/app/config/database.yml:ro
-                      - ./config/cache_store.yml:/usr/src/app/config/cache_store.yml:ro
-                              - ./config/outgoing_mail.yml:/usr/src/app/config/outgoing_mail.yml:ro
-                                      - ./config/security.yml:/usr/src/app/config/security.yml:ro
-                                              - ./config/dynamic_settings.yml:/usr/src/app/config/dynamic_settings.yml:ro
-                                                    depends_on:
+      - ./config/database.yml:/usr/src/app/config/database.yml:ro
+      - ./config/cache_store.yml:/usr/src/app/config/cache_store.yml:ro
+      - ./config/outgoing_mail.yml:/usr/src/app/config/outgoing_mail.yml:ro
+      - ./config/security.yml:/usr/src/app/config/security.yml:ro
+      - ./config/dynamic_settings.yml:/usr/src/app/config/dynamic_settings.yml:ro
+    depends_on:
       canvas:
         condition: service_healthy
-              deploy:
-      resources:
-        limits:
-          cpus: "1"
-                      memory: "2g"
 
-                          # ---------------------------------------------------------------------------
-                          # Nginx reverse proxy with SSL termination
-                          # ---------------------------------------------------------------------------
-                          nginx:
-                            image: nginx:stable-alpine
-                                  restart: unless-stopped
-                                        ports:
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
       - "80:80"
-              - "443:443"
-            volumes:
+      - "443:443"
+    volumes:
       - ./config/nginx/canvas.conf:/etc/nginx/conf.d/canvas.conf:ro
-              - nginx_certs:/etc/letsencrypt
-                      - nginx_www:/var/www/certbot
-                            depends_on:
+      - nginx_certs:/etc/letsencrypt
+      - nginx_www:/var/www/certbot
+    depends_on:
       - canvas
-            environment:
-      - CANVAS_DOMAIN=${CANVAS_DOMAIN}
 
 volumes:
   postgres_data:
